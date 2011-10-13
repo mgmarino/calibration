@@ -5,68 +5,79 @@
 #include "TTree.h"
 #include "TCanvas.h"
 #include <iostream>
-#include <string>
 #include <sstream>
 #include <vector>
 #include "fit2.h"
 
-std::vector<double> data;
-double Emin,Emax;
-double para[4] = {0.0};
-double err[4] = {0.0};
-
-void SetEmin(double min)
+namespace FIT
 {
-  Emin = min;
+  std::vector<double> data;
+  double Emin,Emax;
+  double PARA[4] = {0.0};
+  double ERRS[4] = {0.0};
 }
 
-void SetEmax(double max)
+void FIT::SetEmin(double min)
 {
-  Emax = max;
+  FIT::Emin = min;
 }
 
-void AddDataPoint(double point)
+void FIT::SetEmax(double max)
+{
+  FIT::Emax = max;
+}
+
+void FIT::AddDataPoint(double point)
 { 
-  if(point >= Emin && point <= Emax){
-    data.push_back(point);
+  if(point < FIT::Emin || point > FIT::Emax){
+    std::cout << "Warning: trying to add point which is not within energy limits" << std::endl;
+    std::cout << "(Emin|Emax|Epoint)" << std::endl;
+    std::cout << FIT::Emin << "|" << FIT::Emax << "|" << point << std::endl << std::endl;
   }
+  FIT::data.push_back(point);
 }
 
-void SetParams(double *params)
+void FIT::ClearData()
+{
+  FIT::data.clear();
+}
+
+void FIT::SetParams(double *params)
 {
   for(int i=0; i<3; i++){
-    para[i] = params[i];
+    FIT::PARA[i] = params[i];
   }
 }
 
-double* GetParams()
+double* FIT::GetParams()
 {
-  return para;
+  return FIT::PARA;
 }
 
-double* GetParamErrors()
+double* FIT::GetParamErrors()
 {
-  return err;
+  return FIT::ERRS;
 }
   
-TH1D* GetHist()
+TH1D* FIT::GetHist(std::string name)
 {
-  TH1D* hist = new TH1D("hist","hist",50,Emin,Emax);
-  int size = data.size();
+  std::cout << "size of data: " << FIT::data.size() << std::endl;
+  TH1D* hist = new TH1D(("h"+name).c_str(),("h"+name).c_str(),50,FIT::Emin,FIT::Emax);
+  int size = FIT::data.size();
   for(int i=0; i<size; i++){
-    hist->Fill(data[i]);
+    hist->Fill(FIT::data[i]);
   }
-  int lower = hist->FindBin(Emin);
-  int upper = hist->FindBin(Emax);
-  para[3] = hist->Integral(lower,upper) * (Emax-Emin)/50.;
-  TF1 *f = GetFunction(para);
+  int lower = hist->FindBin(FIT::Emin);
+  int upper = hist->FindBin(FIT::Emax);
+  FIT::PARA[3] = hist->Integral(lower,upper) * (FIT::Emax-FIT::Emin)/50.;
+  TF1 *f = GetFunction(FIT::PARA,name);
   hist->GetListOfFunctions()->Add(f);
   return hist;
 }
 
-void fit()
+void FIT::fit()
 {
-  std::cout << "size of data: " << data.size() << std::endl;
+  std::cout << "size of data: " << FIT::data.size() << std::endl;
   double arglist[2] = {0.0};
   TMinuit minuit(3);
   minuit.SetFCN(likelihood);
@@ -75,11 +86,11 @@ void fit()
   minuit.mnexcm("SET ERR",arglist,1,ierflg);
   std::cout << "SET ERR errflag: " << ierflg << std::endl;
 
-  minuit.mnparm(0,"A1",para[0],0.1,0,0,ierflg);
+  minuit.mnparm(0,"A1",FIT::PARA[0],0.1,0,0,ierflg);
   std::cout << "A1 errflag: " << ierflg << std::endl;
-  minuit.mnparm(1,"E",para[1],0.5,0,0,ierflg);
+  minuit.mnparm(1,"E",FIT::PARA[1],0.5,0,0,ierflg);
   std::cout << "E errflag: " << ierflg << std::endl;
-  minuit.mnparm(2,"s",para[2],0.5,0,0,ierflg);
+  minuit.mnparm(2,"s",FIT::PARA[2],0.5,0,0,ierflg);
   std::cout << "s errflag: " << ierflg << std::endl;
 
   arglist[0] = 500.;
@@ -94,27 +105,25 @@ void fit()
   std::cout << "MIGRAD errflag: " << ierflg << std::endl;
   minuit.mnstat(amin,edm,errdef,nvpar,nparx,icstat);
   minuit.mnprin(3,amin);
-  /*
   for(int i=0; i<3; i++){
-    minuit.GetParameter(i,para[i],err[i]);
+    minuit.GetParameter(i,FIT::PARA[i],FIT::ERRS[i]);
   }
-  */
 }
 
-void likelihood(int &npar, double *gin, double &f, double *parameters, int iflag)
+void FIT::likelihood(int &npar, double *gin, double &f, double *parameters, int iflag)
 {
   std::cout << "trying energy = " << parameters[1] << ", sigma = " << parameters[2] << ", A1 = " << parameters[0] << std::endl;
   double logl = 0.0;
-  double integral = FuncIntegral(Emax,parameters) - FuncIntegral(Emin,parameters);
-  unsigned int ndata = data.size();
+  double integral = FuncIntegral(FIT::Emax,parameters) - FuncIntegral(FIT::Emin,parameters);
+  unsigned int ndata = FIT::data.size();
   for(int i=0; i<ndata; i++){
-    logl += TMath::Log(function(data[i],parameters));
+    logl += TMath::Log(function(FIT::data[i],parameters));
   }
 	logl -= ndata * TMath::Log(integral);
   f = -logl;
 }
 
-double function(double x, double *parameters)
+double FIT::function(double x, double *parameters)
 {
   double value = parameters[0]*TMath::Exp(-(x-parameters[1])*(x-parameters[1])/(2*parameters[2]*parameters[2]));
   value += TMath::Erfc((x-parameters[1])/(TMath::Sqrt2()*parameters[2]));
@@ -122,13 +131,13 @@ double function(double x, double *parameters)
   return value;
 }
 
-double drawfunction(double *x, double *parameters)
+double FIT::drawfunction(double *x, double *parameters)
 {
-  double integral = FuncIntegral(Emax,parameters) - FuncIntegral(Emin,parameters);
+  double integral = FuncIntegral(FIT::Emax,parameters) - FuncIntegral(FIT::Emin,parameters);
   return parameters[3]*function(*x,parameters)/integral;
 }
 
-double ErfcIntegral(double x, double a, double b)  //gives the integral over erf(b+a*x)
+double FIT::ErfcIntegral(double x, double a, double b)  //gives the integral over erf(b+a*x)
 {
   double value = -b/a*TMath::Erf(b+a*x);
   value += x*TMath::Erfc(b+a*x);
@@ -136,19 +145,19 @@ double ErfcIntegral(double x, double a, double b)  //gives the integral over erf
   return value;
 }
 
-double FuncIntegral(double x, double *parameters)
+double FIT::FuncIntegral(double x, double *parameters)
 {
   double integral = parameters[0]*parameters[2]*TMath::Sqrt(TMath::Pi()/2.)*TMath::Erf((x-parameters[1])/(TMath::Sqrt2()*parameters[2]));
   integral += ErfcIntegral(x,1/(TMath::Sqrt2()*parameters[2]),-parameters[1]/(TMath::Sqrt2()*parameters[2]));
   return integral;
 }
 
-TF1* GetFunction(double *params)
+TF1* FIT::GetFunction(double *params, std::string name)
 {
-  TF1 *myfunc = new TF1("drawfunction",drawfunction,Emin,Emax,4);
+  TF1 *myfunc = new TF1(("f"+name).c_str(),drawfunction,FIT::Emin,FIT::Emax,4);
   myfunc->SetParameters(params);
   myfunc->SetParNames("A1","E","s","N");
   myfunc->Draw();
-  std::cout << "integral = " << myfunc->Integral(Emin,Emax) << std::endl;
+  std::cout << "integral = " << myfunc->Integral(FIT::Emin,FIT::Emax) << std::endl;
   return myfunc;
 }

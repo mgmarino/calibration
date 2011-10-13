@@ -19,87 +19,54 @@ def GetData(filename):
     nsc = ED.GetNumScintillationClusters()
     for scID in range(nsc):
       scint_cluster = ED.GetScintillationCluster(scID)
-
       if (scint_cluster.fTime > 1928000):
         continue 
       ncl = scint_cluster.GetNumChargeClusters()
+      if(ncl != 1): # only single site events
+        continue
 
-      # safe all charge clusters in array
-      xcl = [] 
-      ycl = [] 
-      zcl = [] 
-      ucl = [] 
-      vcl = [] 
-      dtcl = [] 
-      epcl = [] 
-      tcl = []
-      dhalfcl = []
-      nUWires = []
-
-      for clID in range(ncl):
-        charge_cluster = scint_cluster.GetChargeClusterAt(clID);
-
-        xcl.append(charge_cluster.fX)
-        ycl.append(charge_cluster.fY)
-        zcl.append(charge_cluster.fZ)
-        ucl.append(charge_cluster.fU)
-        vcl.append(charge_cluster.fV)
-        dtcl.append(charge_cluster.fDriftTime / 1000.0)
-        epcl.append(charge_cluster.fPurityCorrectedEnergy)
-        tcl.append(charge_cluster.fCollectionTime)
-        dhalfcl.append(charge_cluster.fDetectorHalf)
-
-        nU = charge_cluster.GetNumUWireSignals()
-        nUWires.append(nU)
-
-      #apply fiducial cut
-      fiducial = True
       energy = 0.0
-      for i in range(ncl):
-        energy += epcl[i]
-        if (ROOT.TMath.Sqrt(xcl[i]*xcl[i] + ycl[i]*ycl[i]) > 163):
-          fiducial = False
+      good = True
+      for clID in range(ncl):
+        cc = scint_cluster.GetChargeClusterAt(clID);
+        energy += cc.fPurityCorrectedEnergy
+        good = IsFiducial(cc.fX,cc.fY,cc.fZ)
+        if(not good):
           break
-        if (zcl[i] > 172 or zcl[i] < -172):
-          fiducial = False
-          break
-        if (zcl[i] > -20 and zcl[i] < 20):
-          fiducial = False
-          break
-        #if (epcl[i] < 100.0):    # for Cs137 every charge cluster must at least have 100 keV
-        #  fiducial = False
-        #  continue 
-      if (ncl == 0):
-        fiducial = False
-        continue
-      if (ncl != 1):
-        continue
-      if (not fiducial):
-        continue
-      if (ncl == 0):
-        continue
-      if (energy < 2000.0 or energy > 3500.0):
-        continue
-      ROOT.AddDataPoint(energy)
+      if(good and energy > 2000. and energy < 3500.):
+        #print("adding energy " + str(energy))
+        ROOT.FIT.AddDataPoint(energy)
+
+def IsFiducial(x,y,z):
+  fiducial = True
+  if (ROOT.TMath.Sqrt(x**2 + y**2) > 163):
+    fiducial = False
+  if (z > 172 or z < -172):
+    fiducial = False
+  if (z > -20 and z < 20):
+    fiducial = False
+  return fiducial
 
 if __name__ == "__main__":
   if len(sys.argv) != 2:
     print("wrong number of arguments")
   else:
+    ROOT.FIT.SetEmin(2000.0)
+    ROOT.FIT.SetEmax(3500.0)
     GetData(sys.argv[1])
-    ROOT.SetEmin(2000.0)
-    ROOT.SetEmax(3500.0)
-    params = array("d",[3.8,2750.0,100.0])
-    ROOT.SetParams(params)
-    canvas = ROOT.TCanvas()
-    canvas.cd()
-    hist = ROOT.GetHist()
+    params = array("d",[3.0,2700.0,100.0])
+    ROOT.FIT.SetParams(params)
+    canvas1 = ROOT.TCanvas()
+    canvas2 = ROOT.TCanvas()
+    canvas1.cd()
+    hist = ROOT.FIT.GetHist("InitialGuess")
     hist.Draw()
-    canvas.Update()
+    canvas1.Update()
     raw_input("enter to continue")
-    ROOT.fit()
-    ROOT.GetHist()
-    hist = ROOT.GetHist()
+    del hist
+    ROOT.FIT.fit()
+    canvas2.cd()
+    hist = ROOT.FIT.GetHist("Fit")
     hist.Draw()
-    canvas.Update()
+    canvas2.Update()
     raw_input("enter to quit")
