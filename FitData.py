@@ -24,6 +24,7 @@ class DataProcessor:
     self.pur.SetFlavor("vanilla")
 
   def ProcessEvent(self,ED):
+    ED.GetWaveformData().Decompress()
     if(self.Beginofrun):
       self.Beginofrun = False
       self.rec.BeginOfRun(ED)
