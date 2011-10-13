@@ -2,12 +2,13 @@ import ROOT,os,sys
 from array import array
 ROOT.gSystem.Load("libEXOROOT")
 
-def GetData(filename,hist):
+def GetData(filename):
   #input data
   t = ROOT.TChain("tree")
   t.Add(filename)
   nentries = t.GetEntries()
 
+  hist = ROOT.TH1D("hist","hist",75,0,3500)
   print("nentries = " + str(nentries))
   for evtID in range(nentries):
     t.GetEntry(evtID)
@@ -27,13 +28,15 @@ def GetData(filename,hist):
       good = True
       for clID in range(ncl):
         cc = scint_cluster.GetChargeClusterAt(clID);
-        energy += cc.fPurityCorrectedEnergy
+        energy += cc.fCorrectedEnergy
         good = IsFiducial(cc.fX,cc.fY,cc.fZ)
         if(not good):
           break
-      if(good and energy > 2000. and energy < 3500.):
+      if(good and energy < 3500.):
         #print("adding energy " + str(energy))
         hist.Fill(energy)
+  hist.Draw()
+  raw_input("enter to quit")
 
 def IsFiducial(x,y,z):
   fiducial = True
@@ -49,10 +52,4 @@ if __name__ == "__main__":
   if len(sys.argv) != 2:
     print("wrong number of arguments")
   else:
-    hist = ROOT.TH1D("hist","hist",75,0,3500)
-    GetData(sys.argv[1],hist)
-    canvas = ROOT.TCanvas()
-    canvas.cd()
-    hist.Draw()
-    canvas.Update()
-    raw_input("enter to quit")
+    GetData(sys.argv[1])
