@@ -9,19 +9,18 @@ class DataProcessor:
     self.rec = ROOT.EXOReconstructionModule()
     self.wiregain = ROOT.EXOWireGainModule()
     self.pur = ROOT.EXOLifetimeCalibModule()
+    self.rec.set_use_true_t0_flag(False)
+    self.rec.set_ATeam_YMatch_flag(1)
+    self.rec.set_pattern_recognition(4)
+    self.rec.set_SumBothAPDPlanes(False)
+    #self.rec.set_ChannelFitChiSquareCut(-999.9)
+    self.pur.SetFlavor("vanilla")
     self.Beginofrun = True
     self.Emin = min
     self.Emax = max
     self.rec.Initialize()
-    self.rec.rec.set_use_trigger_t0(False)
-    self.rec.rec.set_ATeam_YMatch(1)
-    self.rec.rec.set_pattern_recognition_apd(4)
-    self.rec.rec.set_pattern_recognition_uwire(4)
-    self.rec.rec.SumBothAPDPlanes = False
-    self.rec.rec.ChannelFitChiSquareCut = -999.9
     self.wiregain.Initialize()
     self.pur.Initialize()
-    self.pur.SetFlavor("vanilla")
 
   def ProcessEvent(self,ED):
     ED.GetWaveformData().Decompress()
@@ -57,6 +56,7 @@ class DataProcessor:
         if not good:
           break
         energy += cc.fPurityCorrectedEnergy
+        #energy += cc.fCorrectedEnergy
       if good and (energy > self.Emin) and (energy < self.Emax):
         ROOT.FIT.AddDataPoint(energy)
 
@@ -73,7 +73,8 @@ def ProcessRun(runnumber,lowerWin,upperWin,Emin,Emax,initialParams,multisite):
   nentries = t.GetEntries()
   print("Processing " + str(nentries) + " events")
   for i in range(nentries):
-    print("event " + str(i))
+    if(not i%1000):
+      print("event " + str(i))
     t.GetEntry(i)
     ED = t.EventBranch
     processor.ProcessEvent(ED)
