@@ -67,7 +67,9 @@ def ProcessRun(runnumber,lowerWin,upperWin,Emin,Emax,initialParams,multisite):
   processor = DataProcessor(Emin,Emax)
   processor.SetLowerWindow(lowerWin)
   processor.SetUpperWindow(upperWin)
-  path = os.path.expandvars("$EXODATA/WIPP/root/"+str(runnumber))
+  basedir = "$EXODATA/WIPP/root/"
+  #basedir = "/exo/scratch1/old_shaping_time_data"
+  path = os.path.expandvars(basedir + str(runnumber))
   t = ROOT.TChain("tree")
   t.Add(path + "/run*.root")
   nentries = t.GetEntries()
@@ -94,9 +96,7 @@ def IsFiducial(x,y,z):
     fiducial = False
   return fiducial
 
-def main():
-  runs = [1926]
-  #runs = [2448]
+def main(runs):
   for run in runs:
     windows = [-20,-10,0,10,20,30]
     energies = []
@@ -112,4 +112,7 @@ def main():
 
 
 if __name__ == "__main__":
-  main()
+  if len(sys.argv) > 1:
+    main(sys.argv[2:])
+  else:
+    print("please specify run number(s)")
