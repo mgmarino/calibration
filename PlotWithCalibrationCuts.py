@@ -8,7 +8,7 @@ def GetData(filename):
   t.Add(filename)
   nentries = t.GetEntries()
 
-  hist = ROOT.TH1D("hist","hist",75,0,3500)
+  hist = ROOT.TH1D("hist","hist",125,0,3500)
   print("nentries = " + str(nentries))
   for evtID in range(nentries):
     t.GetEntry(evtID)
@@ -29,6 +29,7 @@ def GetData(filename):
       for clID in range(ncl):
         cc = scint_cluster.GetChargeClusterAt(clID);
         energy += cc.fCorrectedEnergy
+        #energy += cc.fRawEnergy
         good = IsFiducial(cc.fX,cc.fY,cc.fZ)
         if(not good):
           break

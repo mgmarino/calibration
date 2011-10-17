@@ -6,6 +6,11 @@ ROOT.gSystem.Load("fit2.so")
 
 class DataProcessor:
   def __init__(self,min,max):
+    self.calib = ROOT.EXOCalibManager.GetCalibManager()
+    self.calib.SetMetadataAccessType("mysql")
+    self.calib.SetPort(3306)
+    self.calib.SetUser("rd_exo_cond_ro")
+    self.calib.SetHost("mysql-node03.slac.stanford.edu")
     self.rec = ROOT.EXOReconstructionModule()
     self.wiregain = ROOT.EXOWireGainModule()
     self.pur = ROOT.EXOLifetimeCalibModule()
@@ -67,11 +72,13 @@ def ProcessRun(runnumber,lowerWin,upperWin,Emin,Emax,initialParams,multisite):
   processor = DataProcessor(Emin,Emax)
   processor.SetLowerWindow(lowerWin)
   processor.SetUpperWindow(upperWin)
-  basedir = "$EXODATA/WIPP/root/"
-  #basedir = "/exo/scratch1/old_shaping_time_data"
+  basedir = "$EXOROOTDATA/"
   path = os.path.expandvars(basedir + str(runnumber))
   t = ROOT.TChain("tree")
-  t.Add(path + "/run*.root")
+  path += "/run*.root"
+  #path += "/run00001926-000.root"
+  #print(path)
+  t.Add(path)
   nentries = t.GetEntries()
   print("Processing " + str(nentries) + " events")
   for i in range(nentries):
@@ -97,6 +104,7 @@ def IsFiducial(x,y,z):
   return fiducial
 
 def main(runs):
+  print runs
   for run in runs:
     windows = [-20,-10,0,10,20,30]
     energies = []
@@ -106,13 +114,13 @@ def main(runs):
       e, s =  ProcessRun(run,window,90,2000,3500,InitialParams,False)
       energies.append(e)
       sigmas.append(s)
-    graph = ROOT.TGraphErrors(windows,energies,len(windows)*[0],sigmas)
+    graph = ROOT.TGraphErrors(len(windows),array("d",windows),array("d",energies),array("d",len(windows)*[0]),array("d",sigmas))
     graph.Draw("AP")
     raw_input("hit enter to continue")
 
 
 if __name__ == "__main__":
   if len(sys.argv) > 1:
-    main(sys.argv[2:])
+    main(sys.argv[1:])
   else:
     print("please specify run number(s)")
