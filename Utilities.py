@@ -1,4 +1,4 @@
-import math,ROOT
+import math,ROOT,os
 
 class FiducialCut:
   def __init__(self,r=163.,lz=20.,uz=172.):
@@ -6,7 +6,7 @@ class FiducialCut:
     self.lowerzcut = lz
     self.upperzcut = uz
 
-  def IsFiducial(x,y,z)
+  def IsFiducial(x,y,z):
     if math.hypot(x,y) > self.rcut:
       return False
     if abs(z) > self.upperzcut:
@@ -32,3 +32,26 @@ class Reconstruction:
       self.rec.BeginOfRun(ED)
     self.rec.ProcessEvent(ED)
 
+  def Reset():
+    self.Beginofrun = True
+
+def GetPathByRun(runnumber,raw=False):
+  path = ""
+  if raw:
+    path += "$EXOROOTDATA/"
+  else:
+    path += "$EXOPROCESSEDDATA/"
+  path += str(runnumber) + "/"
+  if raw:
+    path += "run*.root"
+  else:
+    path += "recon*.root"
+  return os.path.expandvars(path)
+
+def GetEvent(t,eventnumber):
+  nentries = t.GetEntries()
+  for i in range(eventnumber-1,nentries):
+    t.GetEntry(i)
+    if t.EventBranch.fEventNumber == eventnumber:
+      return t.EventBranch
+  return None
