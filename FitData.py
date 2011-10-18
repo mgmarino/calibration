@@ -1,5 +1,6 @@
 import ROOT,os,sys
 from array import array
+from Utilities import FiducialCut
 
 ROOT.gSystem.Load("libEXOROOT")
 ROOT.gSystem.Load("fit2.so")
@@ -26,6 +27,7 @@ class DataProcessor:
     self.rec.Initialize()
     self.wiregain.Initialize()
     self.pur.Initialize()
+    self.Cut = FiducialCut()
 
   def ProcessEvent(self,ED):
     ED.GetWaveformData().Decompress()
@@ -57,7 +59,7 @@ class DataProcessor:
       good = True
       for j in range(nccl):
         cc = sc.GetChargeClusterAt(j)
-        good = IsFiducial(cc.fX,cc.fY,cc.fZ)
+        good = self.Cut.IsFiducial(cc.fX,cc.fY,cc.fZ)
         if not good:
           break
         energy += cc.fPurityCorrectedEnergy
@@ -75,8 +77,8 @@ def ProcessRun(runnumber,lowerWin,upperWin,Emin,Emax,initialParams,multisite):
   basedir = "$EXOROOTDATA/"
   path = os.path.expandvars(basedir + str(runnumber))
   t = ROOT.TChain("tree")
-  path += "/run*.root"
-  #path += "/run00001926-000.root"
+  #path += "/run*.root"
+  path += "/run00001926-000.root"
   #print(path)
   t.Add(path)
   nentries = t.GetEntries()
@@ -92,16 +94,6 @@ def ProcessRun(runnumber,lowerWin,upperWin,Emin,Emax,initialParams,multisite):
   params = ROOT.FIT.GetParams()
   errors = ROOT.FIT.GetParamErrors()
   return params[0],params[1]
-
-def IsFiducial(x,y,z):
-  fiducial = True
-  if (ROOT.TMath.Sqrt(x**2 + y**2) > 163):
-    fiducial = False
-  if (z > 172 or z < -172):
-    fiducial = False
-  if (z > -20 and z < 20):
-    fiducial = False
-  return fiducial
 
 def main(runs):
   print runs
